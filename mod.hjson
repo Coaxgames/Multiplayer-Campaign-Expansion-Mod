@@ -1,0 +1,23 @@
+#the mod name as displayed in-game
+displayName: "Multiplayer Campaign Expansion Mod"
+
+#the internal name of your mod
+name: "MCEM"
+
+#your name
+author: "Xaon4207"
+
+#the fully qualified main class of the mod. Target: MCEM.Main
+main: "example.ExampleJavaMod"
+
+#the mod description as seen in the mod dialog
+description: "Allows Clients to pause during a Capmaign hosting session, More features will be available soon! This mod does have a roadmap on the repo with Planned Features there"
+
+#the mod version
+version: 1.0
+
+#the minimum game build required to run this mod
+minGameVersion: 145
+
+#this is a java mod
+java: true
