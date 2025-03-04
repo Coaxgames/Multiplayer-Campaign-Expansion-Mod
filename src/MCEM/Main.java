@@ -67,8 +67,6 @@ public class Main extends Mod {
                     lastSyncTime = Time.millis() + 5100 - since;
                 }
 
-            } else if (!Core.settings.getBool("multiplayerpause-syncon")) {
-                Menus.infoToast(Strings.format("@ @ the game.", p == null ? "[lightgray]Skipped Sync" : Strings.stripColors(p.name)), 2f);
             }
         });
     }
