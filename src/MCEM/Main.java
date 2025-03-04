@@ -42,9 +42,7 @@ public class Main extends Mod {
 
     void setupPackets() {
         netServer.addPacketHandler("multiplayerpause-request", (p, data) -> {
-            if (!Core.settings.getBool("multiplayerpause-syncon")) {
-                if (!(p.admin || Core.settings.getBool("multiplayerpause-allowany")) ||  state.isMenu()) return;
-            }
+            if (!(p.admin || Core.settings.getBool("multiplayerpause-allowany")) ||  state.isMenu()) return;
 
 
             state.set(state.isPaused() ? GameState.State.playing : GameState.State.paused);
@@ -57,26 +55,21 @@ public class Main extends Mod {
             boolean paused = d[1].equals("t");
             state.set(paused ? GameState.State.paused : GameState.State.playing); // Reflect state change on the client ASAP
             showToast(Groups.player.getByID(Strings.parseInt(d[0])), paused);
-            if (Core.settings.getBool("multiplayerpause-syncon" + (paused ? "pause" : "unpause"))) {
-                long since = Time.millis() - lastSyncTime;
-                if (since > 5100) { // Sync now
-                    Call.sendChatMessage("/sync");
-                    lastSyncTime = Time.millis();
-                } else if (Core.settings.getBool("multiplayerpause-schedulesync") && since > 0) { // Schedule a sync as one has taken place recently
-                    Timer.schedule(() -> Call.sendChatMessage("/sync"), (5100 - since) / 1000f);
-                    lastSyncTime = Time.millis() + 5100 - since;
-                }
-
-            }
         });
     }
-
-    void showToast(Player p, boolean paused) {
-        if (!Core.settings.getBool("multiplayerpause-syncon")) { //Sync & Reset UI + Build plans
-            if (net.server()) Call.clientPacketReliable("multiplayerpause-updatestate", p.id + " " + (paused ? "t" : "f")); // Forward state change to clients
-        }
-
-        if (!Core.settings.getBool("multiplayerpause-toasts")) return; //Show toast
+    
+    //Shows players who paused (if not the server)
+    void showPause(Player p, boolean paused, String msg) {
+        //Sync & Reset UI + Build plans
+        if (net.server()) Call.clientPacketReliable("multiplayerpause-updatestate", p.id + " " + (paused ? "t" : "f"));//Forward change to players
+        
+        if (!Core.settings.getBool("multiplayerpause-toasts")) return; //Push toast if enabled
         Menus.infoToast(Strings.format("@ @ the game.", p == null ? "[lightgray]Unknown player[]" : Strings.stripColors(p.name), paused ? "paused" : "unpaused"), 2f);
+    }
+    
+    //A toast Function for General Notifactions With Targeted Clients (To target all use: Groups.player.getByID(Strings.parseInt(d[0])))
+    void showToast(Player p, String msg) {
+        if (!Core.settings.getBool("multiplayerpause-toasts")) return; //Push toast if enabled
+        Menus.infoToast(Strings.format("@ @ the game.", p == null ? msg : Strings.stripColors(p.name), msg), 2f);
     }
 }
