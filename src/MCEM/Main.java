@@ -35,7 +35,7 @@ public class Main extends Mod {
         Events.run(Trigger.update, () -> {
             if (Core.input.keyTap(Binding.pause) && !renderer.isCutscene() && !scene.hasDialog() && !scene.hasKeyboard() && !ui.restart.isShown() && state.isGame() && net.active()) {
                 if (net.client()) Call.serverPacketReliable("multiplayerpause-request", ""); // Send pause request
-                else showToast(player, !state.isPaused()); // Show toast for host pausing (inverted as the state hasn't been updated yet)
+                else showPause(player, !state.isPaused()); // Show toast for host pausing (inverted as the state hasn't been updated yet)
             }
         });
     }
@@ -46,7 +46,7 @@ public class Main extends Mod {
 
 
             state.set(state.isPaused() ? GameState.State.playing : GameState.State.paused);
-            showToast(p, state.isPaused());
+            showPause(p, state.isPaused());
         });
         // State changes are forwarded to clients for more responsive pausing (avoids waiting for next stateSnapshot) which should reduce desync (I hope) and allows for toasts
         netClient.addPacketHandler("multiplayerpause-updatestate", data -> {
@@ -54,12 +54,12 @@ public class Main extends Mod {
             if (d.length != 2) return;
             boolean paused = d[1].equals("t");
             state.set(paused ? GameState.State.paused : GameState.State.playing); // Reflect state change on the client ASAP
-            showToast(Groups.player.getByID(Strings.parseInt(d[0])), paused);
+            showPause(Groups.player.getByID(Strings.parseInt(d[0])), paused);
         });
     }
     
     //Shows players who paused (if not the server)
-    void showPause(Player p, boolean paused, String msg) {
+    void showPause(Player p, boolean paused) {
         //Sync & Reset UI + Build plans
         if (net.server()) Call.clientPacketReliable("multiplayerpause-updatestate", p.id + " " + (paused ? "t" : "f"));//Forward change to players
         
