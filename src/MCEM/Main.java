@@ -24,14 +24,20 @@ public class Main extends Mod {
 
     void addSettings() {
         ui.settings.addCategory("Multiplayer Pause", Icon.pause, s -> {
-            s.checkPref("multiplayerpause-toasts", true);
-            s.checkPref("multiplayerpause-syncon", false);
-            s.checkPref("multiplayerpause-allowany", true);
-            s.checkPref("multiplayerpause-schedulesync", false);
+            s.checkPref("Techtree-toasts", true);
+            s.checkPref("Normal-toasts", true);
+            s.checkPref("MP-AllClientsCanPause", true);
+            s.checkPref("MP-SyncTechTreeToClients", true);
         });
     }
 
     void setupEvents() {
+        Events.run(Trigger.UnlockEvent, (UnlockableContent content) -> {
+            //Add a check here to see if it was player 1, once i create the UI for clients to unlock stuff then ill add smth in to bypass sending back from the player that called this
+            if (net.client()) Call.serverPacketReliable("Techtree-UnlockSync", content); // Send pause request
+            else showTechToast(player, content); // Show toast for host pausing (inverted as the state hasn't been updated yet)
+            
+        });
         Events.run(Trigger.update, () -> {
             if (Core.input.keyTap(Binding.pause) && !renderer.isCutscene() && !scene.hasDialog() && !scene.hasKeyboard() && !ui.restart.isShown() && state.isGame() && net.active()) {
                 if (net.client()) Call.serverPacketReliable("multiplayerpause-request", ""); // Send pause request
@@ -41,14 +47,30 @@ public class Main extends Mod {
     }
 
     void setupPackets() {
-        netServer.addPacketHandler("multiplayerpause-request", (p, data) -> {
-            if (!(p.admin || Core.settings.getBool("multiplayerpause-allowany")) ||  state.isMenu()) return;
+        //Send request to server, So that the server can toast and sync to the other clients
+        netServer.addPacketHandler("Techtree-UnlockSync", (p, data) -> {
+            if (Core.settings.getBool("MP-SyncTechTreeToClients")) return;
+
+
+            //state.set(state.isPaused() ? GameState.State.playing : GameState.State.paused);
+            showTechToast(p, content);
+        });
+        //Forward Unlock to clients as the server to the clients
+        netServer.addPacketHandler("Techtree-UnlockSync-updateclient", (p, data) -> {
+            
+            //Add the tech unlock thing here for all players (Though i need to find a way to avoid sending back to the host player, may even add the Tech API Before hand)
+            showTechToast(Groups.player.getByID(Strings.parseInt(d[0])), data);
+        });
+
+        //Send request to server, So the clients can have the change seen on the host
+        netServer.addPacketHandler("multiplayerpause-request-updatestate", (p, data) -> {
+            if (!(p.admin || Core.settings.getBool("MP-AllClientsCanPause")) ||  state.isMenu()) return;
 
 
             state.set(state.isPaused() ? GameState.State.playing : GameState.State.paused);
             showPause(p, state.isPaused());
         });
-        // State changes are forwarded to clients for more responsive pausing (avoids waiting for next stateSnapshot) which should reduce desync (I hope) and allows for toasts
+        //State changes are forwarded to clients for more responsive pausing, If any issues with de-sync then use Beforegameupdate on the api
         netClient.addPacketHandler("multiplayerpause-updatestate", data -> {
             String[] d = data.split(" ");
             if (d.length != 2) return;
@@ -63,13 +85,15 @@ public class Main extends Mod {
         //Sync & Reset UI + Build plans
         if (net.server()) Call.clientPacketReliable("multiplayerpause-updatestate", p.id + " " + (paused ? "t" : "f"));//Forward change to players
         
-        if (!Core.settings.getBool("multiplayerpause-toasts")) return; //Push toast if enabled
+        if (!Core.settings.getBool("pause-toasts")) return; //Push toast if enabled
         Menus.infoToast(Strings.format("@ @ the game.", p == null ? "[lightgray]Unknown player[]" : Strings.stripColors(p.name), paused ? "paused" : "unpaused"), 2f);
     }
     
-    //A toast Function for General Notifactions With Targeted Clients (To target all use: Groups.player.getByID(Strings.parseInt(d[0])))
-    void showToast(Player p, String msg) {
-        if (!Core.settings.getBool("multiplayerpause-toasts")) return; //Push toast if enabled
-        Menus.infoToast(Strings.format("@ @ the game.", p == null ? msg : Strings.stripColors(p.name), msg), 2f);
+    //Shows players That another player has unlocked content
+    void showTechToast(Player p, UnlockableContent content) {
+        if (net.server()) Call.clientPacketReliable("Techtree-UnlockSync-updateclient", content);//Forward change to players
+
+        if (!Core.settings.getBool("Techtree-toasts")) return; //Push toast if enabled
+        Menus.infoToast(Strings.format("@ @ the game.", p == null ? "[lightgray]Unknown player[]" : Strings.stripColors(p.name), content), 2f);
     }
 }
