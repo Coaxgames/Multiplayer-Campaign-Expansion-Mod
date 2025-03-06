@@ -30,9 +30,12 @@ public class Main extends Mod {
             s.checkPref("MP-SyncTechTreeToClients", true);
         });
     }
+    public UnlockableContent(String name){
+
+    }
 
     void setupEvents() {
-        Events.run(Trigger.UnlockEvent, (UnlockableContent content) -> {
+        Events.run(UnlockEvent, (UnlockableContent content) -> {
             //Add a check here to see if it was player 1, once i create the UI for clients to unlock stuff then ill add smth in to bypass sending back from the player that called this
             if (net.client()) Call.serverPacketReliable("Techtree-UnlockSync", content); // Send pause request
             else showTechToast(player, content); // Show toast for host pausing (inverted as the state hasn't been updated yet)
@@ -58,8 +61,9 @@ public class Main extends Mod {
         //Forward Unlock to clients as the server to the clients
         netServer.addPacketHandler("Techtree-UnlockSync-updateclient", (p, data) -> {
             
+            String[] d = data.split(" ");
             //Add the tech unlock thing here for all players (Though i need to find a way to avoid sending back to the host player, may even add the Tech API Before hand)
-            showTechToast(Groups.player.getByID(Strings.parseInt(d[0])), data);
+            showTechToast(Groups.player.getByID(Strings.parseInt(d[0])), d[1]);
         });
 
         //Send request to server, So the clients can have the change seen on the host
