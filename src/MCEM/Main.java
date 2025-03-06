@@ -91,7 +91,7 @@ public class Main extends Mod {
     }
     
     //Shows players That another player has unlocked content
-    void showTechToast(Player p, String content) {
+    void showTechToast(Player p, content t) {
         if (net.server()) Call.clientPacketReliable("Techtree-UnlockSync-updateclient", content);//Forward change to players
 
         if (!Core.settings.getBool("Techtree-toasts")) return; //Push toast if enabled
