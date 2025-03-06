@@ -24,10 +24,10 @@ public class Main extends Mod {
 
     void addSettings() {
         ui.settings.addCategory("Multiplayer Pause", Icon.pause, s -> {
-            s.checkPref("Techtree-toasts", true);
+            //s.checkPref("Techtree-toasts", true);
             s.checkPref("Normal-toasts", true);
             s.checkPref("MP-AllClientsCanPause", true);
-            s.checkPref("MP-SyncTechTreeToClients", true);
+            //s.checkPref("MP-SyncTechTreeToClients", true);
         });
     }
 
