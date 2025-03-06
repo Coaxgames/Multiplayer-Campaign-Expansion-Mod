@@ -48,20 +48,20 @@ public class Main extends Mod {
 
     void setupPackets() {
         //Send request to server, So that the server can toast and sync to the other clients
-        netServer.addPacketHandler("Techtree-UnlockSync", (p, data) -> {
-            if (Core.settings.getBool("MP-SyncTechTreeToClients")) return;
-
-
-            //state.set(state.isPaused() ? GameState.State.playing : GameState.State.paused);
-            showTechToast(p, content);
-        });
+        //netServer.addPacketHandler("Techtree-UnlockSync", (p, data) -> {
+        //    if (Core.settings.getBool("MP-SyncTechTreeToClients")) return;
+//
+//
+        //    //state.set(state.isPaused() ? GameState.State.playing : GameState.State.paused);
+        //    showTechToast(p, content);
+        //});
         //Forward Unlock to clients as the server to the clients
-        netServer.addPacketHandler("Techtree-UnlockSync-updateclient", (p, data) -> {
-            
-            String[] d = data.split(" ");
-            //Add the tech unlock thing here for all players (Though i need to find a way to avoid sending back to the host player, may even add the Tech API Before hand)
-            showTechToast(Groups.player.getByID(Strings.parseInt(d[0])), d[1]);
-        });
+        //netServer.addPacketHandler("Techtree-UnlockSync-updateclient", (p, data) -> {
+        //    
+        //    String[] d = data.split(" ");
+        //    //Add the tech unlock thing here for all players (Though i need to find a way to avoid sending back to the host player, may even add the Tech API Before hand)
+        //    showTechToast(Groups.player.getByID(Strings.parseInt(d[0])), d[1]);
+        //});
 
         //Send request to server, So the clients can have the change seen on the host
         netServer.addPacketHandler("multiplayerpause-request-updatestate", (p, data) -> {
