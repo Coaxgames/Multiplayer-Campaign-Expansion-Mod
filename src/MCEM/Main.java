@@ -32,7 +32,7 @@ public class Main extends Mod {
     }
 
     void setupEvents() {
-        Events.on(UnlockEvent, c -> { //i need the name of the Unlocked content, This is passing the UnlockEvent to c. so i may need to get help on that as well
+        Events.on(EventType.UnlockEvent, c -> { //i need the name of the Unlocked content, This is passing the UnlockEvent to c. so i may need to get help on that as well
             //Add a check here to see if it was player 1, once i create the UI for clients to unlock stuff then ill add smth in to bypass sending back from the player that called this
             if (net.client()) Call.serverPacketReliable("Techtree-UnlockSync", c); // Send pause request
             else showTechToast(player, c); // Show toast for host pausing (inverted as the state hasn't been updated yet)
