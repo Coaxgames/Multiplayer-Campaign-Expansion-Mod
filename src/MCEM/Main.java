@@ -30,9 +30,6 @@ public class Main extends Mod {
             s.checkPref("MP-SyncTechTreeToClients", true);
         });
     }
-    public UnlockableContent(String name){
-
-    }
 
     void setupEvents() {
         Events.run(UnlockEvent, (UnlockableContent content) -> {
