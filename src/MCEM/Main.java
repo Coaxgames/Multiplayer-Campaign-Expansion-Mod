@@ -32,7 +32,7 @@ public class Main extends Mod {
     }
 
     void setupEvents() {
-        Events.run(UnlockEvent, (UnlockableContent content) -> {
+        Events.on(UnlockEvent.class, content -> {
             //Add a check here to see if it was player 1, once i create the UI for clients to unlock stuff then ill add smth in to bypass sending back from the player that called this
             if (net.client()) Call.serverPacketReliable("Techtree-UnlockSync", content); // Send pause request
             else showTechToast(player, content); // Show toast for host pausing (inverted as the state hasn't been updated yet)
@@ -91,7 +91,7 @@ public class Main extends Mod {
     }
     
     //Shows players That another player has unlocked content
-    void showTechToast(Player p, UnlockableContent content) {
+    void showTechToast(Player p, String content) {
         if (net.server()) Call.clientPacketReliable("Techtree-UnlockSync-updateclient", content);//Forward change to players
 
         if (!Core.settings.getBool("Techtree-toasts")) return; //Push toast if enabled
