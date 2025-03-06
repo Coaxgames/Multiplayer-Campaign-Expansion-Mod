@@ -32,12 +32,12 @@ public class Main extends Mod {
     }
 
     void setupEvents() {
-        Events.on(EventType.UnlockEvent, c -> { //i need the name of the Unlocked content, This is passing the UnlockEvent to c. so i may need to get help on that as well
-            //Add a check here to see if it was player 1, once i create the UI for clients to unlock stuff then ill add smth in to bypass sending back from the player that called this
-            if (net.client()) Call.serverPacketReliable("Techtree-UnlockSync", c); // Send pause request
-            else showTechToast(player, c); // Show toast for host pausing (inverted as the state hasn't been updated yet)
-            
-        });
+        //Events.on(UnlockEvent.class, c -> { //i need the name of the Unlocked content, This is passing the UnlockEvent to c. so i may need to get help on that as well
+        //    //Add a check here to see if it was player 1, once i create the UI for clients to unlock stuff then ill add smth in to bypass sending back from the player that called this
+        //    if (net.client()) Call.serverPacketReliable("Techtree-UnlockSync", c); // Send pause request
+        //    else showTechToast(player, c); // Show toast for host pausing (inverted as the state hasn't been updated yet)
+        //    
+        //});
         Events.run(Trigger.update, () -> {
             if (Core.input.keyTap(Binding.pause) && !renderer.isCutscene() && !scene.hasDialog() && !scene.hasKeyboard() && !ui.restart.isShown() && state.isGame() && net.active()) {
                 if (net.client()) Call.serverPacketReliable("multiplayerpause-request", ""); // Send pause request
@@ -91,10 +91,10 @@ public class Main extends Mod {
     }
     
     //Shows players That another player has unlocked content
-    void showTechToast(Player p, content t) {
-        if (net.server()) Call.clientPacketReliable("Techtree-UnlockSync-updateclient", t);//Forward change to players
-
-        if (!Core.settings.getBool("Techtree-toasts")) return; //Push toast if enabled
-        Menus.infoToast(Strings.format("@ @ the game.", p == null ? "[lightgray]Unknown player[]" : Strings.stripColors(p.name), content), 2f);
-    }
+    //void showTechToast(Player p, content t) {
+    //    if (net.server()) Call.clientPacketReliable("Techtree-UnlockSync-updateclient", t);//Forward change to players
+//
+    //    if (!Core.settings.getBool("Techtree-toasts")) return; //Push toast if enabled
+    //    Menus.infoToast(Strings.format("@ @ the game.", p == null ? "[lightgray]Unknown player[]" : Strings.stripColors(p.name), content), 2f);
+    //}
 }
