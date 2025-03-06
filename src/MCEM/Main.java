@@ -32,10 +32,10 @@ public class Main extends Mod {
     }
 
     void setupEvents() {
-        Events.on(UnlockEvent.class, content -> {
+        Events.on(UnlockEvent.class, c -> {
             //Add a check here to see if it was player 1, once i create the UI for clients to unlock stuff then ill add smth in to bypass sending back from the player that called this
-            if (net.client()) Call.serverPacketReliable("Techtree-UnlockSync", content); // Send pause request
-            else showTechToast(player, content); // Show toast for host pausing (inverted as the state hasn't been updated yet)
+            if (net.client()) Call.serverPacketReliable("Techtree-UnlockSync", c); // Send pause request
+            else showTechToast(player, c); // Show toast for host pausing (inverted as the state hasn't been updated yet)
             
         });
         Events.run(Trigger.update, () -> {
