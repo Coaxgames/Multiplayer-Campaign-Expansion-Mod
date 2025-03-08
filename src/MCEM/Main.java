@@ -12,8 +12,7 @@ import mindustry.ui.*;
 import static arc.Core.*;
 import static mindustry.Vars.*;
 
-//Adding items?
-new Item("sulfur");
+
 
 public class Main extends Mod {
     private long lastSyncTime;
