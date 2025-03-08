@@ -86,7 +86,7 @@ public class Main extends Mod {
         //Sync & Reset UI + Build plans
         if (net.server()) Call.clientPacketReliable("multiplayerpause-updatestate", p.id + " " + (paused ? "t" : "f"));//Forward change to players
         
-        if (!Core.settings.getBool("pause-toasts")) return; //Push toast if enabled
+        if (!Core.settings.getBool("Normal-toasts")) return; //Push toast if enabled
         Menus.infoToast(Strings.format("@ @ the game.", p == null ? "[lightgray]Unknown player[]" : Strings.stripColors(p.name), paused ? "paused" : "unpaused"), 2f);
     }
     
