@@ -25,9 +25,9 @@ public class Main extends Mod {
     void addSettings() {
         ui.settings.addCategory("Multiplayer Pause", Icon.pause, s -> {
             //s.checkPref("Techtree-toasts", true);
-            s.checkPref("Normal-toasts", true);
-            s.checkPref("MP-AllClientsCanPause", true);
-            //s.checkPref("MP-SyncTechTreeToClients", true);
+            s.checkPref("normal-toasts", true);
+            s.checkPref("mp-allclientscanpause", true);
+            //s.checkPref("mp-SyncTechTreeToClients", true);
         });
     }
 
@@ -49,7 +49,7 @@ public class Main extends Mod {
     void setupPackets() {
         //Send request to server, So that the server can toast and sync to the other clients
         //netServer.addPacketHandler("Techtree-UnlockSync", (p, data) -> {
-        //    if (Core.settings.getBool("MP-SyncTechTreeToClients")) return;
+        //    if (Core.settings.getBool("mp-SyncTechTreeToClients")) return;
 //
 //
         //    //state.set(state.isPaused() ? GameState.State.playing : GameState.State.paused);
@@ -65,7 +65,7 @@ public class Main extends Mod {
 
         //Send request to server, So the clients can have the change seen on the host
         netServer.addPacketHandler("multiplayerpause-request-updatestate", (p, data) -> {
-            if (!(p.admin || Core.settings.getBool("MP-AllClientsCanPause")) ||  state.isMenu()) return;
+            if (!(p.admin || Core.settings.getBool("mp-allclientscanpause")) ||  state.isMenu()) return;
 
 
             state.set(state.isPaused() ? GameState.State.playing : GameState.State.paused);
@@ -86,7 +86,7 @@ public class Main extends Mod {
         //Sync & Reset UI + Build plans
         if (net.server()) Call.clientPacketReliable("multiplayerpause-updatestate", p.id + " " + (paused ? "t" : "f"));//Forward change to players
         
-        if (!Core.settings.getBool("Normal-toasts")) return; //Push toast if enabled
+        if (!Core.settings.getBool("normal-toasts")) return; //Push toast if enabled
         Menus.infoToast(Strings.format("@ @ the game.", p == null ? "[lightgray]Unknown player[]" : Strings.stripColors(p.name), paused ? "paused" : "unpaused"), 2f);
     }
     
