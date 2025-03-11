@@ -67,7 +67,7 @@ public class Main extends Mod {
 
         //Send request to server, So the clients can have the change seen on the host
         netServer.addPacketHandler("multiplayerpause-request-updatestate", (p, data) -> {
-            if (!(p.admin || Core.settings.getBool("mp-allclientscanpause")) ||  state.isMenu()) return;
+            //if (!(p.admin || Core.settings.getBool("mp-allclientscanpause")) ||  state.isMenu()) return;
 
 
             state.set(state.isPaused() ? GameState.State.playing : GameState.State.paused);
