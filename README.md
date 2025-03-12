@@ -1,13 +1,12 @@
 # Mindustry Campaign hosting is lacking
 Alright to say the least there is no option to share or even see the tech tree & map which inturn makes campaign & multiplayer not worth the effort, unless Hosting a server.
-And even hosting a Dedicated server is rather limited, Anuken unfortunately does not see this as fair but who said we needed progress for the clients? 
+And even hosting a Dedicated server is rather limited, Anuken unfortunately does not see this as fair which is fine, but having the option as the host to share Content is a huge touch like minecraft and many other games. why not make all players Contribute to one tech tree? Or their own tech tree, which if allowed by the host can be replicated to the client.
 
 Well look no more this mod intends to expand campaign multiplayer gameplay without breaking other mod compatibility
 
 ## What is offered in this mod Currently
 - Campaign Pausing, Including all clients if enabled
-- Dedicated server Pausing, Not required in v8 anymore but there just incase its needed
-- Save Sync (External Tool!)
+- Dedicated server Pausing, No de-sync should happen, but the more players the more chance
 
 ## Whats Planned for later
 - A Simple but dedicated menu with Client controls & Host setting for the host.
@@ -27,7 +26,7 @@ Its a bit tricky to learn at first, but if you intend to host and play campaign 
 2. Once downloaded follow this guide: https://docs.syncthing.net/intro/getting-started.html
 
 Now the Eternal debate (step 3 for host and Clients):
-Option 1. As the HOST start to share your Sector save folder itself (Export your save first as a backup!), Make sure its set to Send Only when sharing and hosting! If you want others to host as well set the share setting to Send & Recieve!
+Option 1. As the HOST start to share your Sector save folder itself (Export your save first as a backup!), Make sure its set to Send Only when sharing and hosting! If you want others to host as well set the share setting to Send & Recieve! (Dont load the same sector on 2+ machines!, just host that, the mod will fix this eventually)
 
 Option 2. As the SAVE OWNER Make a new folder to share and Export your save there, with Share set as Send & Recieve this means anyone else can host but not you!
 Option 2 for Clients ONLY. As the CLIENT you can set your shared folder to Recieve only, this will make sure you retain YOUR tech tree when the host is playing alone

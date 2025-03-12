@@ -1,3 +1,4 @@
+package MCEM;
 
 import arc.*;
 import arc.util.*;
@@ -12,6 +13,7 @@ import static arc.Core.*;
 import static mindustry.Vars.*;
 
 public class Main extends Mod {
+    @SuppressWarnings("unused")
     private long lastSyncTime;
 
     @Override
