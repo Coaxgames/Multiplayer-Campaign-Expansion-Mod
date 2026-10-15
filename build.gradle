@@ -1,6 +1,6 @@
 apply plugin: "java"
 
-version '3.2'
+version '1.0'
 
 sourceSets.main.java.srcDirs = ["src"]
 
@@ -17,7 +17,7 @@ java{
 
 ext{
     //the build number that this mod is made for
-    mindustryVersion = 'v160.7'
+    mindustryVersion = 'v146'
     jabelVersion = "93fde537c7"
     //windows sucks
     isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
@@ -62,7 +62,7 @@ task jarAndroid{
 
         def d8 = isWindows ? "d8.bat" : "d8"
 
-        //dex and desugar files - this requires d8 to be in your PATH
+        //dex and desugar files - this requires d8 in your PATH
         "$d8 $dependencies --min-api 14 --output ${project.archivesBaseName}Android.jar ${project.archivesBaseName}Desktop.jar"
             .execute(null, new File("$buildDir/libs")).waitForProcessOutput(System.out, System.err)
     }
