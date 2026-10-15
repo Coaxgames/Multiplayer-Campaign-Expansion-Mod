@@ -20,10 +20,10 @@ The mod also has a new Roadmap, It will retain as its own mod, check out MCEM-E 
 "
 
 #the mod version
-version: 3.2
+version: 3.1
 
 #the minimum game build required to run this mod
-minGameVersion: 154
+minGameVersion: 145
 
 #this is a java mod
 java: true
