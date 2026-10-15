@@ -11,12 +11,9 @@ author: "Xaon4207"
 main: "MCEM.Main"
 
 #the mod description as seen in the mod dialog
-description: [["Allows Clients to pause during a Campaign hosting session, More features will be available soon!
-------Warning------
-Content WILL Change overtime!
-This Mod is in Developement mode, Setting and ways this mod fucntion will change. New UI Coming soon, along with some new gameplay mechanics.
-The mod also has a new Roadmap, It will retain as its own mod, check out MCEM-E as it adds more content but is brand-new is testing as well.
-"]]
+description: '''
+Allows clients to pause during a campaign hosting session. More features are planned.
+'''
 
 #the mod version
 version: "3.2"
