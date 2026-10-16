@@ -166,7 +166,7 @@ public class Main extends Mod {
 
     void setupPackets() {
         //PLayer to Local function below, i assume that is synced
-        netServer.addPacketHandler("multiplayerpause-request", (p, data) -> {
+        netServer.addPacketHandler("multiplayerpause-request", (p, data) -> {//only runs on non-host clients
             Log.info("DEBUG CLIENTCALLED PAUSETOGGLE: @", p, data, !state.isPaused());
             handlePauseRequest(p, !state.isPaused());//send request to flip state
         });
@@ -184,15 +184,17 @@ public class Main extends Mod {
             Log.info("DEBUG AFTER: @", paused);
             showToast(Groups.player.getByID(Strings.parseInt(d[0])), paused);
         });
-        //works out if game is paused for each client or not and will update the client i think?
+        //works out if game is paused for each client
         Events.on(StateChangeEvent.class, event -> {
             if (!net.server() || !net.active() ||
                 !Core.input.keyTap(Binding.pause) ||
                 (event.from != GameState.State.paused && event.from != GameState.State.playing) ||
                 (event.to != GameState.State.paused && event.to != GameState.State.playing) ||
                 player == null) return;
-
+            
+            Log.info("EVENT AFTER: @", player, event.from, event.to, GameState.State.paused);
             boolean targetPaused = event.to == GameState.State.paused;
+            Log.info("EVENT AFTER2: @", player, event.from, event.to, GameState.State.pause, targetPaused);
             showToast(player, targetPaused);
         });
     }
