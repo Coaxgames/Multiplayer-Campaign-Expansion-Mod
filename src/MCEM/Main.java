@@ -3,7 +3,11 @@ package MCEM;
 import arc.*;
 import arc.input.KeyBind;
 import arc.input.KeyCode;
+import arc.scene.Element;
+import arc.scene.ui.Image;
 import arc.scene.ui.ImageButton;
+import arc.scene.ui.Label;
+import arc.scene.ui.layout.Stack;
 import arc.scene.ui.layout.Table;
 import arc.util.*;
 import mindustry.core.*;
@@ -27,6 +31,7 @@ public class Main extends Mod {
     private Boolean voteTarget;
     private KeyBind buildAssistKey;
     private Table buildAssistOverlay;
+    private Element buildAssistHudIcon;
 
     @Override
     public void init() {
@@ -75,7 +80,37 @@ public class Main extends Mod {
     }
 
     void ensureBuildAssistButton() {
-        if (headless || buildAssistOverlay != null || !state.isGame() || Core.scene == null) return;
+        if (headless || !state.isGame() || Core.scene == null) return;
+        if (buildAssistHudIcon != null && buildAssistHudIcon.parent != null) return;
+
+        buildAssistHudIcon = null;
+        Table modeRow = findFooBuildAssistModeRow();
+        if (modeRow != null) {
+            Image enabledIcon = new Image(Icon.hammer);
+            enabledIcon.visible(() -> Core.settings.getBool(buildAssistSetting, false));
+
+            Image disabledIcon = new Image(Icon.hammer.tint(0.4f, 0.4f, 0.4f, 0.4f));
+            disabledIcon.visible(() -> !Core.settings.getBool(buildAssistSetting, false));
+
+            Label clickLayer = new Label("");
+            clickLayer.clicked(this::toggleBuildAssist);
+
+            buildAssistHudIcon = modeRow.stack(enabledIcon, disabledIcon, clickLayer)
+                .size(25f).padRight(8f).padBottom(2f)
+                .tooltip(t -> t.background(Styles.black6).margin(4f)
+                    .add(Strings.format("@ [yellow](@)", Core.bundle.get("multiplayerpause-buildassist.label"),
+                        buildAssistKey.value.key.getName()))
+                    .style(Styles.outlineLabel))
+                .get();
+
+            if (buildAssistOverlay != null) {
+                Core.scene.root.removeChild(buildAssistOverlay);
+                buildAssistOverlay = null;
+            }
+            return;
+        }
+
+        if (buildAssistOverlay != null) return;
 
         buildAssistOverlay = new Table();
         buildAssistOverlay.setFillParent(true);
@@ -89,6 +124,25 @@ public class Main extends Mod {
         }).padBottom(8f);
         buildAssistOverlay.visible(() -> state.isGame() && player != null && player.isBuilder());
         Core.scene.root.addChild(buildAssistOverlay);
+    }
+
+    Table findFooBuildAssistModeRow() {
+        Table[] waves = {null};
+        Core.scene.root.forEach(element -> {
+            if (element instanceof Table table && "waves".equals(table.name)) waves[0] = table;
+        });
+        if (waves[0] == null) return null;
+
+        for (Element child : waves[0].getChildren()) {
+            if (child instanceof Table table && table.getBackground() == Tex.wavepane) {
+                int modeIcons = 0;
+                for (Element item : table.getChildren()) {
+                    if (item instanceof Stack) modeIcons++;
+                }
+                if (modeIcons >= 6) return table;
+            }
+        }
+        return null;
     }
 
     void toggleBuildAssist() {
