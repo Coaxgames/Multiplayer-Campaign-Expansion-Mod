@@ -16,20 +16,12 @@ import mindustry.input.*;
 import mindustry.mod.*;
 import mindustry.ui.*;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import static arc.Core.*;
 import static mindustry.Vars.*;
 
 public class Main extends Mod {
     private static final String buildAssistSetting = "multiplayerpause-buildassist";
 
-    private final Set<Integer> pauseVotes = new HashSet<>();
-    private Boolean voteTarget;
-    private boolean applyingPauseVoteState;
-    private GameState.State pendingHostPauseFrom;
-    private GameState.State pendingHostPauseTo;
     private KeyBind buildAssistKey;
     private Label buildAssistHint;
     private Table buildAssistFallback;
@@ -48,14 +40,13 @@ public class Main extends Mod {
             s.checkPref("multiplayerpause-allowany", true);
             s.checkPref("multiplayerpause-adminsobeysync", false);
             s.checkPref("multiplayerpause-synconpause", false);
-            s.checkPref("multiplayerpause-synconunpause", false); // Is enabling this by default a good idea? I have no clue how much desync this mod is going to cause...
+            s.checkPref("multiplayerpause-synconunpause", false);
             s.checkPref("multiplayerpause-schedulesync", false);
         });
     }
 
     void setupEvents() {
         Events.run(Trigger.update, () -> {
-            processHostPauseTransition();
             ensureBuildAssistHint();
             if (state.isGame() && player != null && player.isBuilder() && !scene.hasDialog() && !scene.hasKeyboard() &&
                 Core.input.keyTap(buildAssistKey)) {
@@ -68,10 +59,6 @@ public class Main extends Mod {
                 (state.isPaused() || state.isPlaying())) {
                 if (net.client()) {
                     Call.serverPacketReliable("multiplayerpause-request", "");
-                } else if (net.server() && player != null &&
-                    !(state.isCampaign() && state.afterGameOver) && !renderer.isCutscene() &&
-                    !state.rules.pauseDisabled) {
-                    handleHostPauseKey();
                 }
             }
         });
@@ -186,180 +173,24 @@ public class Main extends Mod {
             state.set(paused ? GameState.State.paused : GameState.State.playing); // Reflect state change on the client ASAP
             showToast(Groups.player.getByID(Strings.parseInt(d[0])), paused);
         });
-        netClient.addPacketHandler("multiplayerpause-votes", data -> {
-            String[] d = data.split(" ");
-            if (d.length != 3 || !(d[0].equals("p") || d[0].equals("u"))) return;
-
-            int votes;
-            int total;
-            try {
-                votes = Integer.parseInt(d[1]);
-                total = Integer.parseInt(d[2]);
-            } catch (NumberFormatException ignored) {
-                Log.warn("Ignoring malformed pause vote update: @", data);
-                return;
-            }
-
-            if (votes < 0 || total < 0 || votes > total) {
-                Log.warn("Ignoring invalid pause vote count: @", data);
-                return;
-            }
-
-            showVoteProgressLocally(d[0].equals("p"), votes, total);
-        });
-
-        Events.on(PlayerLeave.class, event -> {
-            if (net.server()) Core.app.post(this::refreshVotesAfterLeave);
-        });
-
         Events.on(StateChangeEvent.class, event -> {
-            if (applyingPauseVoteState || !net.server() || !net.active() ||
+            if (!net.server() || !net.active() ||
                 !Core.input.keyTap(Binding.pause) ||
                 (event.from != GameState.State.paused && event.from != GameState.State.playing) ||
                 (event.to != GameState.State.paused && event.to != GameState.State.playing) ||
                 player == null) return;
 
             boolean targetPaused = event.to == GameState.State.paused;
-            if (!isSyncEnabled(targetPaused) ||
-                (player.admin && !Core.settings.getBool("multiplayerpause-adminsobeysync"))) {
-                clearPauseVotes();
-                showToast(player, targetPaused);
-            }
+            showToast(player, targetPaused);
         });
-    }
-
-    boolean isSyncEnabled(boolean pausing) {
-        return Core.settings.getBool(pausing ? "multiplayerpause-synconpause" : "multiplayerpause-synconunpause");
-    }
-
-    void handleHostPauseKey() {
-        GameState.State from = state.getState();
-        boolean targetPaused = !state.isPaused();
-
-        if (!isSyncEnabled(targetPaused) ||
-            (player.admin && !Core.settings.getBool("multiplayerpause-adminsobeysync"))) return;
-
-        if (castPauseVote(player, targetPaused)) {
-            setPauseVoteState(from);
-            pendingHostPauseFrom = null;
-            pendingHostPauseTo = null;
-        } else {
-            pendingHostPauseFrom = from;
-            pendingHostPauseTo = targetPaused ? GameState.State.paused : GameState.State.playing;
-        }
-    }
-
-    void processHostPauseTransition() {
-        GameState.State from = pendingHostPauseFrom;
-        GameState.State to = pendingHostPauseTo;
-        pendingHostPauseFrom = null;
-        pendingHostPauseTo = null;
-
-        if (from == null || to == null || state.getState() != to ||
-            voteTarget == null || voteTarget != (to == GameState.State.paused)) return;
-
-        setPauseVoteState(from);
     }
 
     void handlePauseRequest(Player p, boolean targetPaused) {
         if (p == null || !net.server() || state.isMenu() || state.rules.pauseDisabled ||
             (!p.admin && !Core.settings.getBool("multiplayerpause-allowany"))) return;
 
-        if (p.admin && !Core.settings.getBool("multiplayerpause-adminsobeysync")) {
-            clearPauseVotes();
-            setPauseVoteState(targetPaused ? GameState.State.paused : GameState.State.playing);
-            showToast(p, targetPaused);
-            return;
-        }
-
-        boolean completed = castPauseVote(p, targetPaused);
-        if (net.server() && p == player && !completed) {
-            setPauseVoteState(targetPaused ? GameState.State.playing : GameState.State.paused);
-        }
-    }
-
-    boolean castPauseVote(Player p, boolean targetPaused) {
-        if (p == null) return false;
-
-        if (!isSyncEnabled(targetPaused)) {
-            clearPauseVotes();
-            setPauseVoteState(targetPaused ? GameState.State.paused : GameState.State.playing);
-            showToast(p, targetPaused);
-            return true;
-        }
-
-        if (voteTarget == null || voteTarget != targetPaused) {
-            clearPauseVotes();
-            voteTarget = targetPaused;
-        }
-
-        pauseVotes.removeIf(id -> !isVotePlayerConnected(id));
-        pauseVotes.add(p.id);
-        return updateVoteProgress();
-    }
-
-    boolean updateVoteProgress() {
-        if (voteTarget == null) return false;
-
-        int total = votePlayerCount();
-        int votes = pauseVotes.size();
-        boolean pausing = voteTarget;
-        showVoteProgress(pausing, votes, total);
-
-        if (total > 0 && votes >= total) {
-            int voterId = pauseVotes.iterator().next();
-            Player voter = Groups.player.getByID(voterId);
-            if (voter == null && net.server() && player != null && player.id == voterId) voter = player;
-            setPauseVoteState(pausing ? GameState.State.paused : GameState.State.playing);
-            clearPauseVotes();
-            showToast(voter, pausing);
-            return true;
-        }
-        return false;
-    }
-
-    void refreshVotesAfterLeave() {
-        if (voteTarget == null) return;
-
-        pauseVotes.removeIf(id -> !isVotePlayerConnected(id));
-        updateVoteProgress();
-    }
-
-    boolean isVotePlayerConnected(int id) {
-        return Groups.player.getByID(id) != null || (net.server() && player != null && player.id == id);
-    }
-
-    int votePlayerCount() {
-        int total = Groups.player.size();
-        if (net.server() && player != null && Groups.player.getByID(player.id) == null) total++;
-        return total;
-    }
-
-    void clearPauseVotes() {
-        pauseVotes.clear();
-        voteTarget = null;
-    }
-
-    void setPauseVoteState(GameState.State targetState) {
-        applyingPauseVoteState = true;
-        try {
-            state.set(targetState);
-        } finally {
-            applyingPauseVoteState = false;
-        }
-    }
-
-    void showVoteProgress(boolean pausing, int votes, int total) {
-        if (net.server()) {
-            Call.clientPacketReliable("multiplayerpause-votes", (pausing ? "p" : "u") + " " + votes + " " + total);
-        }
-        showVoteProgressLocally(pausing, votes, total);
-    }
-
-    void showVoteProgressLocally(boolean pausing, int votes, int total) {
-        if (!Core.settings.getBool("multiplayerpause-toasts")) return;
-
-        Menus.infoToast(Strings.format("@ votes: @/@ players", pausing ? "Pause" : "Unpause", votes, total), 2f);
+        state.set(targetPaused ? GameState.State.paused : GameState.State.playing);
+        showToast(p, targetPaused);
     }
 
     void showToast(Player p, boolean paused) {
