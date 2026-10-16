@@ -79,8 +79,13 @@ public class Main extends Mod {
 
     void ensureBuildAssistHint() {
         if (headless || !state.isGame() || Core.scene == null) return;
-        if (buildAssistHint != null && buildAssistHint.parent != null) {
+        if (Core.settings.getBool("hints") && buildAssistHint != null && buildAssistHint.parent != null) {
             removeBuildAssistFallback();
+            return;
+        }
+
+        if (!Core.settings.getBool("hints")) {
+            ensureBuildAssistFallback();
             return;
         }
 
@@ -108,15 +113,15 @@ public class Main extends Mod {
 
         buildAssistFallback = new Table();
         buildAssistFallback.setFillParent(true);
-        buildAssistFallback.bottom().center();
+        buildAssistFallback.bottom().left();
         buildAssistFallback.table(Styles.black6, panel -> {
             ImageButton button = panel.button(Icon.hammer, Styles.clearNoneTogglei, this::toggleBuildAssist)
                 .size(40f).pad(4f).get();
             button.update(() -> button.setChecked(Core.settings.getBool(buildAssistSetting, false)));
             panel.label(this::buildAssistHintText).padLeft(4f).padRight(8f);
-        }).padBottom(8f);
+        }).left().padLeft(8f).padBottom(8f);
         buildAssistFallback.visible(() -> state.isGame() && player != null && player.isBuilder() &&
-            (buildAssistHint == null || buildAssistHint.parent == null));
+            (!Core.settings.getBool("hints") || buildAssistHint == null || buildAssistHint.parent == null));
         Core.scene.root.addChild(buildAssistFallback);
     }
 
