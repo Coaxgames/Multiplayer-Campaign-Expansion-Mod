@@ -28,6 +28,9 @@ public class Main extends Mod {
     // Keep one vote per player ID; separate sets stop pause votes counting toward unpause (and vice versa).
     private final Set<Integer> pauseVotes = new HashSet<>();
     private final Set<Integer> unpauseVotes = new HashSet<>();
+    // These flags let the state-change listener tell vote-driven changes from the host's normal pause key.
+    private boolean applyingPauseVote;
+    private boolean revertingPauseChange;
 
     private KeyBind buildAssistKey;
     private Label buildAssistHint;
@@ -194,15 +197,40 @@ public class Main extends Mod {
             state.set(paused ? GameState.State.paused : GameState.State.playing); // Reflect state change on the client ASAP
             showToast(Groups.player.getByID(Strings.parseInt(d[0])), paused);
         });
-        // Keep the host's original local pause behavior and forward its state change to clients.
+        //the event that actually tracks and pushes changes to clients; basicly pause logic is here
+        // The host pause key changes state locally first, so turn that change into a vote unless it passes.
         Events.on(StateChangeEvent.class, event -> {
             if (!net.server() || !net.active()) return;
-            clearPauseVotes();
-            if ((event.from != GameState.State.paused && event.from != GameState.State.playing) ||
-                (event.to != GameState.State.paused && event.to != GameState.State.playing) ||
-                !Core.input.keyTap(Binding.pause) || player == null) return;
+            if (applyingPauseVote) {
+                clearPauseVotes();
+                return;
+            }
+            if (revertingPauseChange) return;
 
-            showToast(player, event.to == GameState.State.paused);
+            if ((event.from != GameState.State.paused && event.from != GameState.State.playing) ||
+                (event.to != GameState.State.paused && event.to != GameState.State.playing)) {
+                clearPauseVotes();
+                return;
+            }
+
+            if (!Core.input.keyTap(Binding.pause)) {
+                clearPauseVotes();
+                return;
+            }
+
+            boolean targetPaused = event.to == GameState.State.paused;
+            if (!canVote(player)) {
+                revertPauseChange(event.from);
+                return;
+            }
+
+            addPauseVote(player, targetPaused);
+            if (hasUnanimousVote(targetPaused)) {
+                clearPauseVotes();
+                showToast(player, targetPaused);
+            } else {
+                revertPauseChange(event.from);
+            }
         });
     }
 
@@ -214,7 +242,8 @@ public class Main extends Mod {
             return;
         }
 
-        Set<Integer> connectedIds = connectedVoterIds();
+        Set<Integer> connectedIds = new HashSet<>();
+        for (Player connected : Groups.player) connectedIds.add(connected.id);
         pauseVotes.retainAll(connectedIds);
         unpauseVotes.retainAll(connectedIds);
 
@@ -241,29 +270,30 @@ public class Main extends Mod {
         }
     }
 
-    // Count connected client players, excluding the host; departed players no longer block a unanimous vote.
+    // Count only connected players, so a departed player's old vote cannot block or pass the vote.
     boolean hasUnanimousVote(boolean targetPaused) {
-        Set<Integer> connectedIds = connectedVoterIds();
+        Set<Integer> connectedIds = new HashSet<>();
+        for (Player connected : Groups.player) connectedIds.add(connected.id);
         pauseVotes.retainAll(connectedIds);
         unpauseVotes.retainAll(connectedIds);
         Set<Integer> votes = targetPaused ? pauseVotes : unpauseVotes;
         return !connectedIds.isEmpty() && votes.size() == connectedIds.size();
     }
 
-    // The host keeps its existing direct pause behavior, so only connected remote players are in the vote count.
-    Set<Integer> connectedVoterIds() {
-        Set<Integer> connectedIds = new HashSet<>();
-        for (Player connected : Groups.player) {
-            if (player == null || connected.id != player.id) connectedIds.add(connected.id);
-        }
-        return connectedIds;
-    }
-
     // Apply a passed vote, clear old votes, then sync the new state and toast to clients.
     void applyPauseVote(Player voter, boolean targetPaused) {
         clearPauseVotes();
+        applyingPauseVote = true;
         state.set(targetPaused ? GameState.State.paused : GameState.State.playing);
+        applyingPauseVote = false;
         showToast(voter, targetPaused);
+    }
+
+    // Undo the host's immediate pause-key state change while waiting for everyone to vote.
+    void revertPauseChange(GameState.State previousState) {
+        revertingPauseChange = true;
+        state.set(previousState);
+        revertingPauseChange = false;
     }
 
     // Clear both vote sets after a state change or when votes should no longer carry over.
