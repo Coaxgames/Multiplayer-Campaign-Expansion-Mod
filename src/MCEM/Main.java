@@ -28,6 +28,8 @@ public class Main extends Mod {
     private final Set<Integer> pauseVotes = new HashSet<>();
     private Boolean voteTarget;
     private boolean applyingPauseVoteState;
+    private GameState.State pendingHostPauseFrom;
+    private GameState.State pendingHostPauseTo;
     private KeyBind buildAssistKey;
     private Label buildAssistHint;
     private Table buildAssistFallback;
@@ -53,6 +55,7 @@ public class Main extends Mod {
 
     void setupEvents() {
         Events.run(Trigger.update, () -> {
+            processHostPauseTransition();
             ensureBuildAssistHint();
             if (state.isGame() && player != null && player.isBuilder() && !scene.hasDialog() && !scene.hasKeyboard() &&
                 Core.input.keyTap(buildAssistKey)) {
@@ -165,27 +168,12 @@ public class Main extends Mod {
 
     void setupPackets() {
         Events.on(StateChangeEvent.class, event -> {
-            if (applyingPauseVoteState || !net.server() || !net.active() || !Core.input.keyTap(Binding.pause) ||
+            if (applyingPauseVoteState || !net.server() || !net.active() ||
                 (event.from != GameState.State.paused && event.from != GameState.State.playing) ||
-                (event.to != GameState.State.paused && event.to != GameState.State.playing) ||
-                renderer.isCutscene() || scene.hasDialog() || scene.hasKeyboard() || ui.restart.isShown() ||
-                (state.isCampaign() && state.afterGameOver) || state.rules.pauseDisabled || player == null) return;
+                (event.to != GameState.State.paused && event.to != GameState.State.playing)) return;
 
-            boolean targetPaused = event.to == GameState.State.paused;
-            if (isSyncEnabled(targetPaused) && (!player.admin || Core.settings.getBool("multiplayerpause-adminsobeysync"))) {
-                boolean completed = castPauseVote(player, targetPaused);
-                if (!completed) {
-                    GameState.State stateBeforeVote = event.from;
-                    Core.app.post(() -> {
-                        if (voteTarget != null && voteTarget == targetPaused && state.getState() != stateBeforeVote) {
-                            setPauseVoteState(stateBeforeVote);
-                        }
-                    });
-                }
-            } else {
-                clearPauseVotes();
-                showToast(player, targetPaused);
-            }
+            pendingHostPauseFrom = event.from;
+            pendingHostPauseTo = event.to;
         });
 
         netServer.addPacketHandler("multiplayerpause-request", (p, data) -> {
@@ -237,6 +225,27 @@ public class Main extends Mod {
 
     boolean isSyncEnabled(boolean pausing) {
         return Core.settings.getBool(pausing ? "multiplayerpause-synconpause" : "multiplayerpause-synconunpause");
+    }
+
+    void processHostPauseTransition() {
+        GameState.State from = pendingHostPauseFrom;
+        GameState.State to = pendingHostPauseTo;
+        pendingHostPauseFrom = null;
+        pendingHostPauseTo = null;
+
+        if (from == null || to == null || state.getState() != to || !net.server() || !net.active() ||
+            renderer.isCutscene() || scene.hasDialog() || scene.hasKeyboard() || ui.restart.isShown() ||
+            (state.isCampaign() && state.afterGameOver) || state.gameOver || state.rules.pauseDisabled || player == null) return;
+
+        boolean targetPaused = to == GameState.State.paused;
+        if (isSyncEnabled(targetPaused) && (!player.admin || Core.settings.getBool("multiplayerpause-adminsobeysync"))) {
+            if (!castPauseVote(player, targetPaused)) {
+                setPauseVoteState(from);
+            }
+        } else {
+            clearPauseVotes();
+            showToast(player, targetPaused);
+        }
     }
 
     boolean castPauseVote(Player p, boolean targetPaused) {
