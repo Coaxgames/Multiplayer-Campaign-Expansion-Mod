@@ -8,6 +8,7 @@ import arc.scene.ui.ImageButton;
 import arc.scene.ui.Label;
 import arc.scene.ui.layout.Table;
 import arc.util.*;
+import arc.util.Log;
 import mindustry.core.*;
 import mindustry.entities.units.BuildPlan;
 import mindustry.game.EventType.*;
@@ -166,17 +167,20 @@ public class Main extends Mod {
     void setupPackets() {
         //PLayer to Local function below, i assume that is synced
         netServer.addPacketHandler("multiplayerpause-request", (p, data) -> {
-            handlePauseRequest(p, !state.isPaused());
+            handlePauseRequest(p, !state.isPaused());//send request to flip state
         });
         // State changes are forwarded to clients for more responsive pausing (avoids waiting for next stateSnapshot) which should reduce desync (I hope) and allows for toasts
         netClient.addPacketHandler("multiplayerpause-updatestate", data -> {
             String[] d = data.split(" ");
             if (d.length != 2) return;
             boolean paused = d[1].equals("t");
+
+            Log.info("DEBUG OUT: @", paused);
             state.set(paused ? GameState.State.paused : GameState.State.playing); // Reflect state change on the client ASAP
+            Log.info("DEBUG AFTER: @", paused);
             showToast(Groups.player.getByID(Strings.parseInt(d[0])), paused);
         });
-        //works out if game is paused or not and will update the client i think?
+        //works out if game is paused for each client or not and will update the client i think?
         Events.on(StateChangeEvent.class, event -> {
             if (!net.server() || !net.active() ||
                 !Core.input.keyTap(Binding.pause) ||
@@ -193,8 +197,11 @@ public class Main extends Mod {
     void handlePauseRequest(Player p, boolean targetPaused) {
         if (p == null || !net.server() || state.isMenu() || state.rules.pauseDisabled ||
             (!p.admin && !Core.settings.getBool("multiplayerpause-allowany"))) return;
-
-        
+            
+        Log.info("DEBUG OUT: @", targetPaused);
+        //This sets pause state for others, turning this line off makes it so only the host can pause or unpause; The toasts still show up though
+        state.set(targetPaused ? GameState.State.paused : GameState.State.playing);
+        Log.info("DEBUG OUT: @", targetPaused);
         showToast(p, targetPaused);
     }
 
@@ -203,6 +210,7 @@ public class Main extends Mod {
         if (!Core.settings.getBool("multiplayerpause-toasts")) return;
 
         String action = paused ? "paused" : "unpaused";
+        Log.info("TOAST OUT: @", paused);
         String message = p == null
             ? Strings.format("The game was @.", action)
             : Strings.format("@ @ the game.", Strings.stripColors(p.name), action);
