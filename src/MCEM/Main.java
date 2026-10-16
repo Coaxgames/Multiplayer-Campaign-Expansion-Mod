@@ -16,19 +16,11 @@ import mindustry.input.*;
 import mindustry.mod.*;
 import mindustry.ui.*;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import static arc.Core.*;
 import static mindustry.Vars.*;
 
 public class Main extends Mod {
     private static final String buildAssistSetting = "multiplayerpause-buildassist";
-
-    private final Set<Integer> pauseVotes = new HashSet<>();
-    private final Set<Integer> unpauseVotes = new HashSet<>();
-    private boolean applyingPauseVote;
-    private boolean revertingPauseChange;
 
     private KeyBind buildAssistKey;
     private Label buildAssistHint;
@@ -55,15 +47,13 @@ public class Main extends Mod {
 
     void setupEvents() {
         Events.run(Trigger.update, () -> {
-            updatePauseVotes();
-            ensureBuildAssistHint(); //Tis for BP Sharing
+            ensureBuildAssistHint();
             if (state.isGame() && player != null && player.isBuilder() && !scene.hasDialog() && !scene.hasKeyboard() &&
                 Core.input.keyTap(buildAssistKey)) {
                 toggleBuildAssist();
             }
             updateBuildAssist();
 
-            //Client Request to Pause --> Server/Host
             if (Core.input.keyTap(Binding.pause) && !renderer.isCutscene() && !scene.hasDialog() &&
                 !scene.hasKeyboard() && !ui.restart.isShown() && state.isGame() && net.active() &&
                 (state.isPaused() || state.isPlaying())) {
@@ -172,122 +162,35 @@ public class Main extends Mod {
     }
 
     void setupPackets() {
-        //Server Sided; PacketHandler For Client Requests to pause with P Value
         netServer.addPacketHandler("multiplayerpause-request", (p, data) -> {
             handlePauseRequest(p, !state.isPaused());
         });
         // State changes are forwarded to clients for more responsive pausing (avoids waiting for next stateSnapshot) which should reduce desync (I hope) and allows for toasts
-        netClient.addPacketHandler("multiplayerpause-updatestate", data -> { //this Updates the Clients Pause state
+        netClient.addPacketHandler("multiplayerpause-updatestate", data -> {
             String[] d = data.split(" ");
             if (d.length != 2) return;
             boolean paused = d[1].equals("t");
             state.set(paused ? GameState.State.paused : GameState.State.playing); // Reflect state change on the client ASAP
             showToast(Groups.player.getByID(Strings.parseInt(d[0])), paused);
         });
-        //the event that actually tracks and pushes changes to clients; basicly pause logic is here
         Events.on(StateChangeEvent.class, event -> {
-            if (!net.server() || !net.active()) return;
-            if (applyingPauseVote) {
-                clearPauseVotes();
-                return;
-            }
-            if (revertingPauseChange) return;
-
-            if ((event.from != GameState.State.paused && event.from != GameState.State.playing) ||
-                (event.to != GameState.State.paused && event.to != GameState.State.playing)) {
-                clearPauseVotes();
-                return;
-            }
-
-            if (!Core.input.keyTap(Binding.pause)) {
-                clearPauseVotes();
-                return;
-            }
+            if (!net.server() || !net.active() ||
+                !Core.input.keyTap(Binding.pause) ||
+                (event.from != GameState.State.paused && event.from != GameState.State.playing) ||
+                (event.to != GameState.State.paused && event.to != GameState.State.playing) ||
+                player == null) return;
 
             boolean targetPaused = event.to == GameState.State.paused;
-            if (!canVote(player)) {
-                revertPauseChange(event.from);
-                return;
-            }
-
-            addPauseVote(player, targetPaused);
-            if (hasUnanimousVote(targetPaused)) {
-                clearPauseVotes();
-                showToast(player, targetPaused);
-            } else {
-                revertPauseChange(event.from);
-            }
+            showToast(player, targetPaused);
         });
     }
 
-    void updatePauseVotes() {
-        if (!net.server() || !net.active()) return;
-        if (!state.isGame() || state.rules.pauseDisabled) {
-            clearPauseVotes();
-            return;
-        }
-
-        Set<Integer> connectedIds = new HashSet<>();
-        for (Player connected : Groups.player) connectedIds.add(connected.id);
-        pauseVotes.retainAll(connectedIds);
-        unpauseVotes.retainAll(connectedIds);
-
-        if (!connectedIds.isEmpty() && !state.isPaused() && pauseVotes.size() == connectedIds.size()) {
-            applyPauseVote(null, true);
-        } else if (!connectedIds.isEmpty() && state.isPaused() && unpauseVotes.size() == connectedIds.size()) {
-            applyPauseVote(null, false);
-        }
-    }
-
-    boolean canVote(Player p) {
-        return p != null && !state.isMenu() && !state.rules.pauseDisabled &&
-            (p.admin || Core.settings.getBool("multiplayerpause-allowany"));
-    }
-
-    void addPauseVote(Player p, boolean targetPaused) {
-        if (targetPaused) {
-            unpauseVotes.remove(p.id);
-            pauseVotes.add(p.id);
-        } else {
-            pauseVotes.remove(p.id);
-            unpauseVotes.add(p.id);
-        }
-    }
-
-    boolean hasUnanimousVote(boolean targetPaused) {
-        Set<Integer> connectedIds = new HashSet<>();
-        for (Player connected : Groups.player) connectedIds.add(connected.id);
-        pauseVotes.retainAll(connectedIds);
-        unpauseVotes.retainAll(connectedIds);
-        Set<Integer> votes = targetPaused ? pauseVotes : unpauseVotes;
-        return !connectedIds.isEmpty() && votes.size() == connectedIds.size();
-    }
-
-    void applyPauseVote(Player voter, boolean targetPaused) {
-        clearPauseVotes();
-        applyingPauseVote = true;
-        state.set(targetPaused ? GameState.State.paused : GameState.State.playing);
-        applyingPauseVote = false;
-        showToast(voter, targetPaused);
-    }
-
-    void revertPauseChange(GameState.State previousState) {
-        revertingPauseChange = true;
-        state.set(previousState);
-        revertingPauseChange = false;
-    }
-
-    void clearPauseVotes() {
-        pauseVotes.clear();
-        unpauseVotes.clear();
-    }
-
-    //Controls Weather or not to pause based on settings THIS IS WHERE IM SETTING PAUSE STATE. NETWORKING JUST SYNCS IT
     void handlePauseRequest(Player p, boolean targetPaused) {
-        if (!net.server() || !canVote(p) || targetPaused == state.isPaused()) return;
+        if (p == null || !net.server() || state.isMenu() || state.rules.pauseDisabled ||
+            (!p.admin && !Core.settings.getBool("multiplayerpause-allowany"))) return;
 
-        addPauseVote(p, targetPaused);
-        if (hasUnanimousVote(targetPaused)) applyPauseVote(p, targetPaused);
+        state.set(targetPaused ? GameState.State.paused : GameState.State.playing);
+        showToast(p, targetPaused);
     }
 
     void showToast(Player p, boolean paused) {
