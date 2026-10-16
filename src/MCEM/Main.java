@@ -189,7 +189,7 @@ public class Main extends Mod {
         if (p == null || !net.server() || state.isMenu() || state.rules.pauseDisabled ||
             (!p.admin && !Core.settings.getBool("multiplayerpause-allowany"))) return;
 
-        state.set(targetPaused ? GameState.State.paused : GameState.State.playing);
+        //state.set(targetPaused ? GameState.State.paused : GameState.State.playing);
         showToast(p, targetPaused);
     }
 
