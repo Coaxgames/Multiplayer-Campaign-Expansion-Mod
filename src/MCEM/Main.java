@@ -167,6 +167,7 @@ public class Main extends Mod {
     void setupPackets() {
         //PLayer to Local function below, i assume that is synced
         netServer.addPacketHandler("multiplayerpause-request", (p, data) -> {
+            Log.info("DEBUG CLIENTCALLED PAUSETOGGLE: @", p, data, !state.isPaused());
             handlePauseRequest(p, !state.isPaused());//send request to flip state
         });
         // State changes are forwarded to clients for more responsive pausing (avoids waiting for next stateSnapshot) which should reduce desync (I hope) and allows for toasts
@@ -175,8 +176,11 @@ public class Main extends Mod {
             if (d.length != 2) return;
             boolean paused = d[1].equals("t");
 
-            Log.info("DEBUG OUT: @", paused);
+            //check and set
+            Log.info("DEBUG BEFORE: @", paused);
             state.set(paused ? GameState.State.paused : GameState.State.playing); // Reflect state change on the client ASAP
+
+            //toast
             Log.info("DEBUG AFTER: @", paused);
             showToast(Groups.player.getByID(Strings.parseInt(d[0])), paused);
         });
@@ -197,11 +201,13 @@ public class Main extends Mod {
     void handlePauseRequest(Player p, boolean targetPaused) {
         if (p == null || !net.server() || state.isMenu() || state.rules.pauseDisabled ||
             (!p.admin && !Core.settings.getBool("multiplayerpause-allowany"))) return;
-            
-        Log.info("DEBUG OUT: @", targetPaused);
+
+        Log.info("DEBUG OUT-BEFORE: @", targetPaused);
         //This sets pause state for others, turning this line off makes it so only the host can pause or unpause; The toasts still show up though
         state.set(targetPaused ? GameState.State.paused : GameState.State.playing);
-        Log.info("DEBUG OUT: @", targetPaused);
+
+        //Toast
+        Log.info("DEBUG OUT-AFTER: @", targetPaused);
         showToast(p, targetPaused);
     }
 
