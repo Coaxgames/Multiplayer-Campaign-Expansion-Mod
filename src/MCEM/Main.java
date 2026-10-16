@@ -62,7 +62,7 @@ public class Main extends Mod {
             if (Core.input.keyTap(Binding.pause) && !renderer.isCutscene() && !scene.hasDialog() && !scene.hasKeyboard() && !ui.restart.isShown() && state.isGame() && net.active()) {
                 if (net.client()) Call.serverPacketReliable("multiplayerpause-request", ""); // Send pause request
                 else {
-                    boolean targetPaused = state.isPaused();
+                    boolean targetPaused = !state.isPaused();
                     if (state.isCampaign() && state.afterGameOver || state.rules.pauseDisabled) return;
 
                     if (isSyncEnabled(targetPaused) && (!player.admin || Core.settings.getBool("multiplayerpause-adminsobeysync"))) {
