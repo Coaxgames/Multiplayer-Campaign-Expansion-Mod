@@ -16,7 +16,7 @@ Allows clients to pause during a campaign hosting session. More features are pla
 '''
 
 #the mod version
-version: "3.2"
+version: "3.3"
 
 #the minimum game build required to run this mod
 minGameVersion: "160.5"
