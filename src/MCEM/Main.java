@@ -97,10 +97,7 @@ public class Main extends Mod {
         }
 
         hintPanel[0].row();
-        buildAssistHint = hintPanel[0].label(() -> Core.bundle.format(
-            "multiplayerpause-buildassist.hint",
-            buildAssistKey.value.key.getName()
-        )).style(Styles.outlineLabel).left().get();
+        buildAssistHint = hintPanel[0].label(this::buildAssistHintText).style(Styles.outlineLabel).left().get();
         buildAssistHint.name = "mcem-build-assist-hint";
         buildAssistHint.clicked(this::toggleBuildAssist);
         removeBuildAssistFallback();
@@ -116,8 +113,7 @@ public class Main extends Mod {
             ImageButton button = panel.button(Icon.hammer, Styles.clearNoneTogglei, this::toggleBuildAssist)
                 .size(40f).pad(4f).get();
             button.update(() -> button.setChecked(Core.settings.getBool(buildAssistSetting, false)));
-            panel.label(() -> Strings.format("@ [accent](@)", Core.bundle.get("multiplayerpause-buildassist.label"),
-                buildAssistKey.value.key.getName())).padLeft(4f).padRight(8f);
+            panel.label(this::buildAssistHintText).padLeft(4f).padRight(8f);
         }).padBottom(8f);
         buildAssistFallback.visible(() -> state.isGame() && player != null && player.isBuilder() &&
             (buildAssistHint == null || buildAssistHint.parent == null));
@@ -135,6 +131,12 @@ public class Main extends Mod {
         return text.contains(Core.bundle.format("pausebuilding", Binding.pauseBuilding.value.key.toString())) ||
             text.contains(Core.bundle.format("resumebuilding", Binding.pauseBuilding.value.key.toString())) ||
             text.contains(Core.bundle.format("enablebuilding", Binding.pauseBuilding.value.key.toString()));
+    }
+
+    String buildAssistHintText() {
+        boolean enabled = Core.settings.getBool(buildAssistSetting, false);
+        String hintKey = enabled ? "multiplayerpause-buildassist.hint-off" : "multiplayerpause-buildassist.hint-on";
+        return Core.bundle.format(hintKey, buildAssistKey.value.key.getName());
     }
 
     void toggleBuildAssist() {
