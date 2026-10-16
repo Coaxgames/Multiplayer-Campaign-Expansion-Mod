@@ -47,6 +47,7 @@ public class Main extends Mod {
 
     void setupEvents() {
         Events.run(Trigger.update, () -> {
+            //For BP Sharing
             ensureBuildAssistHint();
             if (state.isGame() && player != null && player.isBuilder() && !scene.hasDialog() && !scene.hasKeyboard() &&
                 Core.input.keyTap(buildAssistKey)) {
@@ -54,6 +55,7 @@ public class Main extends Mod {
             }
             updateBuildAssist();
 
+            //for pause logic
             if (Core.input.keyTap(Binding.pause) && !renderer.isCutscene() && !scene.hasDialog() &&
                 !scene.hasKeyboard() && !ui.restart.isShown() && state.isGame() && net.active() &&
                 (state.isPaused() || state.isPlaying())) {
@@ -162,6 +164,7 @@ public class Main extends Mod {
     }
 
     void setupPackets() {
+        //PLayer to Local function below, i assume that is synced
         netServer.addPacketHandler("multiplayerpause-request", (p, data) -> {
             handlePauseRequest(p, !state.isPaused());
         });
@@ -173,6 +176,7 @@ public class Main extends Mod {
             state.set(paused ? GameState.State.paused : GameState.State.playing); // Reflect state change on the client ASAP
             showToast(Groups.player.getByID(Strings.parseInt(d[0])), paused);
         });
+        //works out if game is paused or not and will update the client i think?
         Events.on(StateChangeEvent.class, event -> {
             if (!net.server() || !net.active() ||
                 !Core.input.keyTap(Binding.pause) ||
@@ -185,11 +189,12 @@ public class Main extends Mod {
         });
     }
 
+    //Main Handle for pause logic
     void handlePauseRequest(Player p, boolean targetPaused) {
         if (p == null || !net.server() || state.isMenu() || state.rules.pauseDisabled ||
             (!p.admin && !Core.settings.getBool("multiplayerpause-allowany"))) return;
 
-        //state.set(targetPaused ? GameState.State.paused : GameState.State.playing);
+        
         showToast(p, targetPaused);
     }
 
