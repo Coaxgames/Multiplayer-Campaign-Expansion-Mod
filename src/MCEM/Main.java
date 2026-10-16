@@ -96,10 +96,10 @@ public class Main extends Mod {
             return;
         }
 
+        hintPanel[0].row();
         buildAssistHint = hintPanel[0].label(() -> Core.bundle.format(
             "multiplayerpause-buildassist.hint",
-            buildAssistKey.value.key.getName(),
-            Core.settings.getBool(buildAssistSetting, false) ? "on" : "off"
+            buildAssistKey.value.key.getName()
         )).style(Styles.outlineLabel).left().get();
         buildAssistHint.name = "mcem-build-assist-hint";
         buildAssistHint.clicked(this::toggleBuildAssist);
