@@ -194,7 +194,7 @@ public class Main extends Mod {
             
             Log.info("EVENT AFTER: @", player, event.from, event.to, GameState.State.paused);
             boolean targetPaused = event.to == GameState.State.paused;
-            Log.info("EVENT AFTER2: @", player, event.from, event.to, GameState.State.pause, targetPaused);
+            Log.info("EVENT AFTER2: @", player, event.from, event.to, GameState.State.paused, targetPaused);
             showToast(player, targetPaused);
         });
     }
