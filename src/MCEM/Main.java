@@ -1,8 +1,13 @@
 package MCEM;
 
 import arc.*;
+import arc.input.KeyBind;
+import arc.input.KeyCode;
+import arc.scene.ui.ImageButton;
+import arc.scene.ui.layout.Table;
 import arc.util.*;
 import mindustry.core.*;
+import mindustry.entities.units.BuildPlan;
 import mindustry.game.EventType.*;
 import mindustry.gen.*;
 import mindustry.input.*;
@@ -16,11 +21,16 @@ import static arc.Core.*;
 import static mindustry.Vars.*;
 
 public class Main extends Mod {
+    private static final String buildAssistSetting = "multiplayerpause-buildassist";
+
     private final Set<Integer> pauseVotes = new HashSet<>();
     private Boolean voteTarget;
+    private KeyBind buildAssistKey;
+    private Table buildAssistOverlay;
 
     @Override
     public void init() {
+        buildAssistKey = KeyBind.add("multiplayerpause_buildassist", KeyCode.y, "multiplayerpause");
         addSettings();
         setupEvents();
         setupPackets();
@@ -39,6 +49,13 @@ public class Main extends Mod {
 
     void setupEvents() {
         Events.run(Trigger.update, () -> {
+            ensureBuildAssistButton();
+            if (state.isGame() && player != null && player.isBuilder() && !scene.hasDialog() && !scene.hasKeyboard() &&
+                Core.input.keyTap(buildAssistKey)) {
+                toggleBuildAssist();
+            }
+            updateBuildAssist();
+
             if (Core.input.keyTap(Binding.pause) && !renderer.isCutscene() && !scene.hasDialog() && !scene.hasKeyboard() && !ui.restart.isShown() && state.isGame() && net.active()) {
                 if (net.client()) Call.serverPacketReliable("multiplayerpause-request", ""); // Send pause request
                 else {
@@ -55,6 +72,53 @@ public class Main extends Mod {
                 }
             }
         });
+    }
+
+    void ensureBuildAssistButton() {
+        if (headless || buildAssistOverlay != null || !state.isGame() || Core.scene == null) return;
+
+        buildAssistOverlay = new Table();
+        buildAssistOverlay.setFillParent(true);
+        buildAssistOverlay.bottom().center();
+        buildAssistOverlay.table(Styles.black6, panel -> {
+            ImageButton button = panel.button(Icon.hammer, Styles.clearNoneTogglei, this::toggleBuildAssist)
+                .size(40f).pad(4f).get();
+            button.update(() -> button.setChecked(Core.settings.getBool(buildAssistSetting, false)));
+            panel.label(() -> Strings.format("@ [accent](@)", Core.bundle.get("multiplayerpause-buildassist.label"),
+                buildAssistKey.value.key.getName())).padLeft(4f).padRight(8f);
+        }).padBottom(8f);
+        buildAssistOverlay.visible(() -> state.isGame() && player != null && player.isBuilder());
+        Core.scene.root.addChild(buildAssistOverlay);
+    }
+
+    void toggleBuildAssist() {
+        boolean enabled = !Core.settings.getBool(buildAssistSetting, false);
+        Core.settings.put(buildAssistSetting, enabled);
+        Menus.infoToast(Core.bundle.get("multiplayerpause-buildassist." + (enabled ? "enabled" : "disabled")), 2f);
+    }
+
+    void updateBuildAssist() {
+        if (!Core.settings.getBool(buildAssistSetting, false) || !state.isGame() || state.isPaused() ||
+            player == null || player.dead() || !player.isBuilder()) return;
+
+        Unit builder = player.unit();
+        if (builder == null || !builder.canBuild() || !builder.updateBuilding) return;
+
+        for (Player teammate : Groups.player) {
+            if (teammate == player || teammate.team() != player.team() || teammate.dead() || !teammate.isBuilder()) continue;
+
+            for (BuildPlan plan : teammate.getPreviewPlans()) {
+                if (plan == null || plan.breaking || plan.block == null || !builder.within(plan, builder.type.buildRange)) continue;
+                if (!hasPlanAt(builder, plan)) builder.plans().addLast(plan.copy());
+            }
+        }
+    }
+
+    boolean hasPlanAt(Unit builder, BuildPlan candidate) {
+        for (BuildPlan plan : builder.plans()) {
+            if (plan.x == candidate.x && plan.y == candidate.y) return true;
+        }
+        return false;
     }
 
     void setupPackets() {
