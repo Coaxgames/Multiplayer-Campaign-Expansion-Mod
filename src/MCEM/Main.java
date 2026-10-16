@@ -25,8 +25,10 @@ import static mindustry.Vars.*;
 public class Main extends Mod {
     private static final String buildAssistSetting = "multiplayerpause-buildassist";
 
+    // Keep one vote per player ID; separate sets stop pause votes counting toward unpause (and vice versa).
     private final Set<Integer> pauseVotes = new HashSet<>();
     private final Set<Integer> unpauseVotes = new HashSet<>();
+    // These flags let the state-change listener tell vote-driven changes from the host's normal pause key.
     private boolean applyingPauseVote;
     private boolean revertingPauseChange;
 
@@ -42,6 +44,7 @@ public class Main extends Mod {
         setupPackets();
     }
 
+    // Add the settings players and hosts use to control pause notifications and permissions.
     void addSettings() {
         ui.settings.addCategory("Multiplayer Pause", Icon.pause, s -> {
             s.checkPref("multiplayerpause-toasts", true);
@@ -53,6 +56,7 @@ public class Main extends Mod {
         });
     }
 
+    // Run per-frame build-assist work and send client pause-key requests to the host.
     void setupEvents() {
         Events.run(Trigger.update, () -> {
             updatePauseVotes();
@@ -74,6 +78,7 @@ public class Main extends Mod {
         });
     }
 
+    // Put the build-assist hint beside Mindustry's build instructions, or show a fallback button.
     void ensureBuildAssistHint() {
         if (headless || !state.isGame() || Core.scene == null) return;
         if (Core.settings.getBool("hints") && buildAssistHint != null && buildAssistHint.parent != null) {
@@ -105,6 +110,7 @@ public class Main extends Mod {
         removeBuildAssistFallback();
     }
 
+    // Show a small build-assist toggle when the normal hints are unavailable.
     void ensureBuildAssistFallback() {
         if (buildAssistFallback != null && buildAssistFallback.parent != null) return;
 
@@ -122,12 +128,14 @@ public class Main extends Mod {
         Core.scene.root.addChild(buildAssistFallback);
     }
 
+    // Remove the fallback toggle when the regular hint can be shown instead.
     void removeBuildAssistFallback() {
         if (buildAssistFallback == null) return;
         if (buildAssistFallback.parent != null) buildAssistFallback.parent.removeChild(buildAssistFallback);
         buildAssistFallback = null;
     }
 
+    // Check whether a label is one of Mindustry's build-assist instruction labels.
     boolean isBuildInstructionLabel(Label label) {
         String text = label.getText().toString();
         return text.contains(Core.bundle.format("pausebuilding", Binding.pauseBuilding.value.key.toString())) ||
@@ -135,18 +143,21 @@ public class Main extends Mod {
             text.contains(Core.bundle.format("enablebuilding", Binding.pauseBuilding.value.key.toString()));
     }
 
+    // Text changes based on whether build assist is currently enabled.
     String buildAssistHintText() {
         boolean enabled = Core.settings.getBool(buildAssistSetting, false);
         String hintKey = enabled ? "multiplayerpause-buildassist.hint-off" : "multiplayerpause-buildassist.hint-on";
         return Core.bundle.format(hintKey, buildAssistKey.value.key.getName());
     }
 
+    // Flip the saved build-assist setting and notify the local player.
     void toggleBuildAssist() {
         boolean enabled = !Core.settings.getBool(buildAssistSetting, false);
         Core.settings.put(buildAssistSetting, enabled);
         Menus.infoToast(Core.bundle.get("multiplayerpause-buildassist." + (enabled ? "enabled" : "disabled")), 2f);
     }
 
+    // Copy nearby teammates' build plans into this builder's queue while build assist is active.
     void updateBuildAssist() {
         if (!Core.settings.getBool(buildAssistSetting, false) || !state.isGame() || state.isPaused() ||
             player == null || player.dead() || !player.isBuilder()) return;
@@ -164,6 +175,7 @@ public class Main extends Mod {
         }
     }
 
+    // Avoid adding a teammate's plan if this builder already has a plan at the same tile.
     boolean hasPlanAt(Unit builder, BuildPlan candidate) {
         for (BuildPlan plan : builder.plans()) {
             if (plan.x == candidate.x && plan.y == candidate.y) return true;
@@ -171,6 +183,7 @@ public class Main extends Mod {
         return false;
     }
 
+    // Clients send pause requests here; state updates are sent back after a vote passes.
     void setupPackets() {
         //Server Sided; PacketHandler For Client Requests to pause with P Value
         netServer.addPacketHandler("multiplayerpause-request", (p, data) -> {
@@ -185,6 +198,7 @@ public class Main extends Mod {
             showToast(Groups.player.getByID(Strings.parseInt(d[0])), paused);
         });
         //the event that actually tracks and pushes changes to clients; basicly pause logic is here
+        // The host pause key changes state locally first, so turn that change into a vote unless it passes.
         Events.on(StateChangeEvent.class, event -> {
             if (!net.server() || !net.active()) return;
             if (applyingPauseVote) {
@@ -220,6 +234,7 @@ public class Main extends Mod {
         });
     }
 
+    // Remove disconnected players' votes and pass a vote if the remaining connected players are unanimous.
     void updatePauseVotes() {
         if (!net.server() || !net.active()) return;
         if (!state.isGame() || state.rules.pauseDisabled) {
@@ -239,11 +254,12 @@ public class Main extends Mod {
         }
     }
 
+    // Check whether the player and current game state can accept a vote.
     boolean canVote(Player p) {
-        return p != null && !state.isMenu() && !state.rules.pauseDisabled &&
-            (p.admin || Core.settings.getBool("multiplayerpause-allowany"));
+        return p != null && !state.isMenu() && !state.rules.pauseDisabled;
     }
 
+    // A player's latest vote replaces their vote for the opposite action.
     void addPauseVote(Player p, boolean targetPaused) {
         if (targetPaused) {
             unpauseVotes.remove(p.id);
@@ -254,6 +270,7 @@ public class Main extends Mod {
         }
     }
 
+    // Count only connected players, so a departed player's old vote cannot block or pass the vote.
     boolean hasUnanimousVote(boolean targetPaused) {
         Set<Integer> connectedIds = new HashSet<>();
         for (Player connected : Groups.player) connectedIds.add(connected.id);
@@ -263,6 +280,7 @@ public class Main extends Mod {
         return !connectedIds.isEmpty() && votes.size() == connectedIds.size();
     }
 
+    // Apply a passed vote, clear old votes, then sync the new state and toast to clients.
     void applyPauseVote(Player voter, boolean targetPaused) {
         clearPauseVotes();
         applyingPauseVote = true;
@@ -271,25 +289,31 @@ public class Main extends Mod {
         showToast(voter, targetPaused);
     }
 
+    // Undo the host's immediate pause-key state change while waiting for everyone to vote.
     void revertPauseChange(GameState.State previousState) {
         revertingPauseChange = true;
         state.set(previousState);
         revertingPauseChange = false;
     }
 
+    // Clear both vote sets after a state change or when votes should no longer carry over.
     void clearPauseVotes() {
         pauseVotes.clear();
         unpauseVotes.clear();
     }
 
     //Controls Weather or not to pause based on settings THIS IS WHERE IM SETTING PAUSE STATE. NETWORKING JUST SYNCS IT
+    // Apply the existing client permission check, record the vote, and change state only once everyone agrees.
     void handlePauseRequest(Player p, boolean targetPaused) {
-        if (!net.server() || !canVote(p) || targetPaused == state.isPaused()) return;
+        if (!net.server() || !canVote(p) ||
+            (!p.admin && !Core.settings.getBool("multiplayerpause-allowany")) ||
+            targetPaused == state.isPaused()) return;
 
         addPauseVote(p, targetPaused);
         if (hasUnanimousVote(targetPaused)) applyPauseVote(p, targetPaused);
     }
 
+    // Tell clients about the pause state and show a local toast if toasts are enabled.
     void showToast(Player p, boolean paused) {
         if (net.server()) Call.clientPacketReliable("multiplayerpause-updatestate", (p == null ? -1 : p.id) + " " + (paused ? "t" : "f")); // Forward state change to clients
         if (!Core.settings.getBool("multiplayerpause-toasts")) return;
